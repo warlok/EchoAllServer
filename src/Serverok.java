@@ -32,19 +32,20 @@ public class Serverok {
             while (keyIterator.hasNext()) {
                 SelectionKey key = keyIterator.next();
                 keyIterator.remove();
-                if (key.isValid() && key.isAcceptable()) {
+                if (key.isValid()) {
+                if (key.isAcceptable()) {
                     ServerSocketChannel channel = (ServerSocketChannel) key.channel();
                     SocketChannel sc = channel.accept();
                     sc.configureBlocking(false);
                     connections.add(sc);
                     sc.register(key.selector(), SelectionKey.OP_READ);
-                } else if (key.isValid() && key.isReadable()) {
+                } else if (key.isReadable()) {
                     SocketChannel sc = (SocketChannel) key.channel();
                     ByteBuffer buffer = ByteBuffer.allocateDirect(1024);
 
                     int read = sc.read(buffer);
                     if (read ==-1) {
-                        return;
+                        continue;
                     }
                     buffer.flip();
                     for(int i=0; i< buffer.limit(); i++) {
@@ -54,16 +55,19 @@ public class Serverok {
                     for (Iterator<SocketChannel> iterChannel =
                                  connections.iterator(); iterChannel.hasNext();) {
                         SocketChannel channel = iterChannel.next();
-                        if (channel != null) {
-                            channel.write(buffer);
-                            buffer.rewind();
-                        } else {
-                            connections.remove(channel);
-                            continue;
-                        }
+                            try {
+                                channel.write(buffer);
+                                buffer.rewind();
+                            } catch (java.io.IOException e) {
+                                if (!channel.isConnected()) {
+                                    System.out.println("Connection closed");
+                                    iterChannel.remove();
+                                }
+                            }
+
                     }
                 }
-            }
+            } }
         }
 
     }
